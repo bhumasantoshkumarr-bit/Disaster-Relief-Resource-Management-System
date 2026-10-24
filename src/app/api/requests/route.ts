@@ -55,13 +55,30 @@ export async function POST(req: Request) {
     const validated = resourceRequestSchema.safeParse(body);
 
     if (!validated.success) {
+      const errorMsg = validated.error.errors.map((e) => e.message).join(", ");
       return NextResponse.json(
-        { error: "Validation error", details: validated.error.flatten().fieldErrors },
+        { error: errorMsg || "Validation error", details: validated.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
     const data = validated.data;
+
+    // Verify disaster exists and is not closed/resolved
+    const targetDisaster = await prisma.disaster.findUnique({
+      where: { id: data.disasterId },
+    });
+
+    if (!targetDisaster) {
+      return NextResponse.json({ error: "Selected disaster not found" }, { status: 404 });
+    }
+
+    if (targetDisaster.status === "Resolved") {
+      return NextResponse.json(
+        { error: "Cannot submit resource requisitions for a resolved disaster incident." },
+        { status: 400 }
+      );
+    }
 
     const resourceRequest = await prisma.resourceRequest.create({
       data: {
@@ -124,6 +141,28 @@ export async function PUT(req: Request) {
 
     if (!id || !status) {
       return NextResponse.json({ error: "Request ID and status required" }, { status: 400 });
+    }
+
+    const existingReq = await prisma.resourceRequest.findUnique({
+      where: { id },
+    });
+
+    if (!existingReq) {
+      return NextResponse.json({ error: "Requisition not found" }, { status: 404 });
+    }
+
+    if (existingReq.status === RequestStatus.Fulfilled && status !== RequestStatus.Fulfilled) {
+      return NextResponse.json(
+        { error: "Business rule violation: Fulfilled requisitions cannot be modified." },
+        { status: 400 }
+      );
+    }
+
+    if (existingReq.status === RequestStatus.Cancelled && status !== RequestStatus.Cancelled) {
+      return NextResponse.json(
+        { error: "Business rule violation: Cancelled requisitions cannot be modified." },
+        { status: 400 }
+      );
     }
 
     // Role check for approving/rejecting

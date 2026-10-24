@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Flame, Plus, AlertCircle, MapPin, Users, Calendar, Search, Edit2, Trash2, X, Eye } from "lucide-react";
+import Link from "next/link";
+import { Flame, Plus, AlertCircle, MapPin, Users, Calendar, Search, Edit2, Trash2, X, Eye, ExternalLink } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { DisasterType, SeverityLevel, DisasterStatus } from "@prisma/client";
@@ -97,7 +98,16 @@ export default function DisastersPage() {
         showToast(isEdit ? "Disaster updated successfully" : "Disaster incident registered", "success");
       } else {
         const data = await res.json();
-        showToast(data.error || "Operation failed", "error");
+        let errMsg = data.error || "Operation failed";
+        if (data.details && typeof data.details === "object") {
+          const detailMsgs = Object.entries(data.details)
+            .map(([field, msgs]) => `${field}: ${(msgs as string[]).join(", ")}`)
+            .join("; ");
+          if (detailMsgs && !errMsg.includes(detailMsgs)) {
+            errMsg = `${errMsg} (${detailMsgs})`;
+          }
+        }
+        showToast(errMsg, "error");
       }
     } catch (err) {
       console.error(err);
@@ -251,7 +261,15 @@ export default function DisastersPage() {
               <tbody className="divide-y divide-slate-100 text-slate-800">
                 {filteredDisasters.map((disaster) => (
                   <tr key={disaster.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-bold text-slate-900">{disaster.name}</td>
+                    <td className="px-4 py-3 font-bold text-slate-900">
+                      <Link
+                        href={`/disasters/${disaster.id}`}
+                        className="text-slate-900 hover:text-indigo-600 hover:underline flex items-center gap-1.5"
+                      >
+                        <span>{disaster.name}</span>
+                        <ExternalLink className="w-3 h-3 text-slate-400" />
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-indigo-600 font-semibold">{disaster.type.replace("_", " ")}</td>
                     <td className="px-4 py-3 text-slate-600">{disaster.affectedArea}</td>
                     <td className="px-4 py-3">
@@ -269,13 +287,13 @@ export default function DisastersPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-1">
-                        <button
-                          onClick={() => setSelectedDisaster(disaster)}
+                        <Link
+                          href={`/disasters/${disaster.id}`}
                           className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
-                        </button>
+                        </Link>
                         <button
                           onClick={() => openEdit(disaster)}
                           className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-slate-100 rounded"
@@ -354,10 +372,14 @@ export default function DisastersPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-slate-700 font-semibold">Description</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-slate-700 font-semibold">Description</label>
+                  <span className="text-[10px] text-slate-400 font-normal">Brief summary (min 2 characters)</span>
+                </div>
                 <textarea
                   required
                   rows={3}
+                  placeholder="Provide details about the disaster incident..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900"

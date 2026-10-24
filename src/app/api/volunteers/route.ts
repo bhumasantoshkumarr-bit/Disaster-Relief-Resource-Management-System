@@ -32,14 +32,20 @@ export async function POST(req: Request) {
     const validated = volunteerSchema.safeParse(body);
 
     if (!validated.success) {
+      const errorMsg = validated.error.errors.map((e) => e.message).join(", ");
       return NextResponse.json(
-        { error: "Validation error", details: validated.error.flatten().fieldErrors },
+        { error: errorMsg || "Validation error", details: validated.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
+    const volunteerData = {
+      ...validated.data,
+      assignedDisasterId: validated.data.assignedDisasterId || null,
+    };
+
     const volunteer = await prisma.volunteer.create({
-      data: validated.data,
+      data: volunteerData,
     });
 
     await logAuditAction({

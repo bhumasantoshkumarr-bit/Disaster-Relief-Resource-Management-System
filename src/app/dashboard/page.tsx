@@ -41,6 +41,9 @@ interface AnalyticsData {
     lowStockItems: number;
     activeDeliveries: number;
     totalVolunteers: number;
+    totalRequests?: number;
+    fulfilledRequests?: number;
+    fulfillmentRate?: number;
   };
   charts: {
     disastersBySeverity: Array<{ name: string; value: number }>;
@@ -165,6 +168,9 @@ export default function DashboardPage() {
     lowStockItems: 0,
     activeDeliveries: 0,
     totalVolunteers: 0,
+    totalRequests: 0,
+    fulfilledRequests: 0,
+    fulfillmentRate: 0,
   };
 
   const criticalRequestsList = requests.filter((r) => r.priority === "Critical" || r.status === "Pending");
@@ -203,99 +209,114 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 6 Top KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* Top KPI Metrics Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {/* Active Disasters */}
-        <div className="saas-card p-4 space-y-2 border-l-4 border-l-rose-500">
+        <div className="saas-card p-3.5 space-y-1.5 border-l-4 border-l-rose-500">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Active Incidents</span>
-            <Flame className="w-4 h-4 text-rose-600" />
+            <span className="text-[11px] font-semibold">Incidents</span>
+            <Flame className="w-3.5 h-3.5 text-rose-600" />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-slate-900">
+            <span className="text-xl font-bold text-slate-900">
               {metrics.activeDisasters}
             </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded badge-critical">Active</span>
+            <span className="text-[9px] font-bold px-1 py-0.5 rounded badge-critical">Active</span>
           </div>
-          <p className="text-[11px] text-slate-500 truncate">Est. {metrics.affectedPopulation.toLocaleString()} affected</p>
+          <p className="text-[10px] text-slate-500 truncate">{metrics.affectedPopulation.toLocaleString()} affected</p>
         </div>
 
         {/* Affected Population */}
-        <div className="saas-card p-4 space-y-2 border-l-4 border-l-orange-500">
+        <div className="saas-card p-3.5 space-y-1.5 border-l-4 border-l-orange-500">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Affected Pop.</span>
-            <Users className="w-4 h-4 text-orange-600" />
+            <span className="text-[11px] font-semibold">Affected Pop.</span>
+            <Users className="w-3.5 h-3.5 text-orange-600" />
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-xl font-bold text-slate-900">
               {metrics.affectedPopulation.toLocaleString()}
             </span>
           </div>
-          <p className="text-[11px] text-slate-500">Total reported in zone</p>
+          <p className="text-[10px] text-slate-500 truncate">Zone aggregate</p>
         </div>
 
         {/* Critical Requests */}
-        <div className="saas-card p-4 space-y-2 border-l-4 border-l-amber-500">
+        <div className="saas-card p-3.5 space-y-1.5 border-l-4 border-l-amber-500">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Critical Requisitions</span>
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <span className="text-[11px] font-semibold">Critical Requests</span>
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-slate-900">
+            <span className="text-xl font-bold text-slate-900">
               {metrics.criticalRequests}
             </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded badge-warning">Urgent</span>
+            <span className="text-[9px] font-bold px-1 py-0.5 rounded badge-warning">Urgent</span>
           </div>
-          <p className="text-[11px] text-slate-500">{metrics.pendingRequests} Total pending</p>
+          <p className="text-[10px] text-slate-500 truncate">{metrics.pendingRequests} Pending</p>
         </div>
 
         {/* Available Resources */}
-        <div className="saas-card p-4 space-y-2 border-l-4 border-l-emerald-500">
+        <div className="saas-card p-3.5 space-y-1.5 border-l-4 border-l-emerald-500">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Inventory Items</span>
-            <Boxes className="w-4 h-4 text-emerald-600" />
+            <span className="text-[11px] font-semibold">Inventory Items</span>
+            <Boxes className="w-3.5 h-3.5 text-emerald-600" />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-slate-900">
+            <span className="text-xl font-bold text-slate-900">
               {metrics.totalResources}
             </span>
             {metrics.lowStockItems > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded badge-warning">
+              <span className="text-[9px] font-bold px-1 py-0.5 rounded badge-warning">
                 {metrics.lowStockItems} Low
               </span>
             )}
           </div>
-          <p className="text-[11px] text-slate-500">Warehouse stock</p>
+          <p className="text-[10px] text-slate-500 truncate">Warehouses</p>
         </div>
 
         {/* Pending Deliveries */}
-        <div className="saas-card p-4 space-y-2 border-l-4 border-l-sky-500">
+        <div className="saas-card p-3.5 space-y-1.5 border-l-4 border-l-sky-500">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Active Logistics</span>
-            <Truck className="w-4 h-4 text-sky-600" />
+            <span className="text-[11px] font-semibold">Convoys Active</span>
+            <Truck className="w-3.5 h-3.5 text-sky-600" />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-slate-900">
+            <span className="text-xl font-bold text-slate-900">
               {metrics.activeDeliveries}
             </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded badge-info">In Transit</span>
+            <span className="text-[9px] font-bold px-1 py-0.5 rounded badge-info">In Transit</span>
           </div>
-          <p className="text-[11px] text-slate-500">Supply shipments</p>
+          <p className="text-[10px] text-slate-500 truncate">Supply logistics</p>
         </div>
 
         {/* Active Volunteers */}
-        <div className="saas-card p-4 space-y-2 border-l-4 border-l-indigo-500">
+        <div className="saas-card p-3.5 space-y-1.5 border-l-4 border-l-indigo-500">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">Response Personnel</span>
-            <ShieldCheck className="w-4 h-4 text-indigo-600" />
+            <span className="text-[11px] font-semibold">Responders</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-slate-900">
+            <span className="text-xl font-bold text-slate-900">
               {metrics.totalVolunteers}
             </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded badge-success">Deployed</span>
+            <span className="text-[9px] font-bold px-1 py-0.5 rounded badge-success">Field</span>
           </div>
-          <p className="text-[11px] text-slate-500">Field response team</p>
+          <p className="text-[10px] text-slate-500 truncate">Volunteers</p>
+        </div>
+
+        {/* Fulfillment Rate */}
+        <div className="saas-card p-3.5 space-y-1.5 border-l-4 border-l-teal-500">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-[11px] font-semibold">Fulfillment</span>
+            <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-xl font-bold text-slate-900">
+              {metrics.fulfillmentRate || 0}%
+            </span>
+            <span className="text-[9px] font-bold px-1 py-0.5 rounded badge-success">Rate</span>
+          </div>
+          <p className="text-[10px] text-slate-500 truncate">{metrics.fulfilledRequests || 0} of {metrics.totalRequests || 0} fulfilled</p>
         </div>
       </div>
 

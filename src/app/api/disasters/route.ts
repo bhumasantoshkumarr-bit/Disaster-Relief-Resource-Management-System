@@ -54,8 +54,9 @@ export async function POST(req: Request) {
     const validated = disasterSchema.safeParse(body);
 
     if (!validated.success) {
+      const errorMsg = validated.error.errors.map((e) => e.message).join(", ");
       return NextResponse.json(
-        { error: "Validation error", details: validated.error.flatten().fieldErrors },
+        { error: errorMsg || "Validation error", details: validated.error.flatten().fieldErrors },
         { status: 400 }
       );
     }

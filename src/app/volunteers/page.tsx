@@ -20,6 +20,7 @@ interface VolunteerItem {
 export default function VolunteersPage() {
   const { showToast } = useToast();
   const [volunteers, setVolunteers] = useState<VolunteerItem[]>([]);
+  const [disasters, setDisasters] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters & Search
@@ -34,14 +35,23 @@ export default function VolunteersPage() {
     skills: "First Aid, Logistics, Medical Triage",
     availability: "Available",
     location: "City Headquarters",
+    assignedDisasterId: "",
   });
 
   const fetchVolunteers = async () => {
     try {
-      const res = await fetch("/api/volunteers");
-      if (res.ok) {
-        const data = await res.json();
+      const [volRes, disRes] = await Promise.all([
+        fetch("/api/volunteers"),
+        fetch("/api/disasters"),
+      ]);
+
+      if (volRes.ok) {
+        const data = await volRes.json();
         setVolunteers(data.volunteers || []);
+      }
+      if (disRes.ok) {
+        const data = await disRes.json();
+        setDisasters(data.disasters || []);
       }
     } catch (err) {
       console.error(err);
@@ -249,6 +259,22 @@ export default function VolunteersPage() {
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
                   className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-700 font-semibold">Assign to Disaster Incident</label>
+                <select
+                  value={form.assignedDisasterId}
+                  onChange={(e) => setForm({ ...form, assignedDisasterId: e.target.value })}
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900"
+                >
+                  <option value="">General Reserve (No incident assigned)</option>
+                  {disasters.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">

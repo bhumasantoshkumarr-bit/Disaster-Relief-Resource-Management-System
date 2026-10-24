@@ -8,6 +8,8 @@ export async function GET() {
       totalPopulation,
       pendingRequestsCount,
       criticalRequestsCount,
+      totalRequestsCount,
+      fulfilledRequestsCount,
       totalResourcesCount,
       lowStockCount,
       activeDeliveriesCount,
@@ -25,6 +27,8 @@ export async function GET() {
       }),
       prisma.resourceRequest.count({ where: { status: "Pending" } }),
       prisma.resourceRequest.count({ where: { priority: "Critical", status: "Pending" } }),
+      prisma.resourceRequest.count(),
+      prisma.resourceRequest.count({ where: { status: "Fulfilled" } }),
       prisma.resource.count(),
       prisma.resource.count({ where: { OR: [{ status: "Low_Stock" }, { status: "Out_of_Stock" }] } }),
       prisma.delivery.count({ where: { status: { in: ["Dispatched", "In_Transit"] } } }),
@@ -52,12 +56,20 @@ export async function GET() {
       }),
     ]);
 
+    const fulfillmentRate =
+      totalRequestsCount > 0
+        ? Math.round((fulfilledRequestsCount / totalRequestsCount) * 100)
+        : 0;
+
     return NextResponse.json({
       metrics: {
         activeDisasters: activeDisastersCount,
         affectedPopulation: totalPopulation._sum.estimatedPopulation || 0,
         pendingRequests: pendingRequestsCount,
         criticalRequests: criticalRequestsCount,
+        totalRequests: totalRequestsCount,
+        fulfilledRequests: fulfilledRequestsCount,
+        fulfillmentRate,
         totalResources: totalResourcesCount,
         lowStockItems: lowStockCount,
         activeDeliveries: activeDeliveriesCount,

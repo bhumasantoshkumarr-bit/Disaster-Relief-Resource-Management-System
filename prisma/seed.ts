@@ -209,17 +209,17 @@ async function main() {
     },
   });
 
-  const disasterLandslide = await prisma.disaster.create({
+  const disasterEarthquake = await prisma.disaster.create({
     data: {
-      name: "Himalayan Ridge Landslide",
-      type: DisasterType.Landslide,
-      description: "Massive hill slope collapse blocking main highway supply routes and isolating high-altitude villages.",
-      severity: SeverityLevel.High,
+      name: "Great Himalayan Alpine Earthquake",
+      type: DisasterType.Earthquake,
+      description: "Magnitude 7.1 earthquake causing extensive structural tremors, landslides along mountain corridors, and isolating mountainous villages.",
+      severity: SeverityLevel.Critical,
       status: DisasterStatus.Active,
-      affectedArea: "Shimla-Kinnaur Belt",
+      affectedArea: "Shimla-Kinnaur Valley",
       latitude: 31.1048,
       longitude: 77.1734,
-      estimatedPopulation: 38000,
+      estimatedPopulation: 65000,
       startDate: new Date("2026-09-15"),
       createdById: officerUser.id,
     },
@@ -373,7 +373,7 @@ async function main() {
       skills: "Medical Triage, Trauma Nursing, Child Care",
       availability: VolunteerAvailability.Deployed,
       location: "Shimla, HP",
-      assignedDisasterId: disasterLandslide.id,
+      assignedDisasterId: disasterEarthquake.id,
     },
   });
 
@@ -404,9 +404,9 @@ async function main() {
 
   await prisma.task.create({
     data: {
-      title: "Clear Landslide Debris near Highway Mile 14",
+      title: "Clear Earthquake Rubble & Debris near Highway Mile 14",
       description: "Coordinate with heavy earthmovers to clear passage for ambulance access.",
-      disasterId: disasterLandslide.id,
+      disasterId: disasterEarthquake.id,
       assignedVolunteerId: vol3.id,
       priority: TaskPriority.High,
       status: TaskStatus.Pending,
@@ -418,7 +418,7 @@ async function main() {
     data: {
       title: "Distribute Thermal Blankets to North Shelter",
       description: "Unload and distribute 400 insulation blankets to cold wave affected families.",
-      disasterId: disasterLandslide.id,
+      disasterId: disasterEarthquake.id,
       assignedVolunteerId: vol2.id,
       priority: TaskPriority.Medium,
       status: TaskStatus.Completed,
@@ -574,6 +574,96 @@ async function main() {
           },
         ],
       },
+    },
+  });
+
+  // Request 4: Partially Fulfilled Request for Alpine Earthquake
+  const request4 = await prisma.resourceRequest.create({
+    data: {
+      requesterId: officerUser.id,
+      disasterId: disasterEarthquake.id,
+      destinationCenterId: shelterNorth.id,
+      priority: RequestPriority.High,
+      justification: "Alpine earthquake collapsed residential housing. Thermal blankets and trauma medical kits urgently required.",
+      status: RequestStatus.Partially_Fulfilled,
+      requestedDate: new Date("2026-09-20T08:00:00Z"),
+      approvedDate: new Date("2026-09-20T09:30:00Z"),
+      items: {
+        create: [
+          {
+            category: ResourceCategory.Blankets,
+            resourceId: resBlankets.id,
+            requestedQuantity: 600,
+            fulfilledQuantity: 400,
+          },
+          {
+            category: ResourceCategory.Medical_Equipment,
+            resourceId: resFirstAid.id,
+            requestedQuantity: 50,
+            fulfilledQuantity: 30,
+          },
+        ],
+      },
+    },
+  });
+
+  const alloc3 = await prisma.resourceAllocation.create({
+    data: {
+      requestId: request4.id,
+      resourceId: resBlankets.id,
+      allocatedQuantity: 400,
+      allocatedById: officerUser.id,
+      status: AllocationStatus.Dispatched,
+      notes: "Dispatched from Northern Relief Depot",
+    },
+  });
+
+  const alloc4 = await prisma.resourceAllocation.create({
+    data: {
+      requestId: request4.id,
+      resourceId: resFirstAid.id,
+      allocatedQuantity: 30,
+      allocatedById: officerUser.id,
+      status: AllocationStatus.Dispatched,
+      notes: "Dispatched from Northern Relief Depot",
+    },
+  });
+
+  // Delivery 3: Dispatched (convoy departing depot)
+  await prisma.delivery.create({
+    data: {
+      requestId: request4.id,
+      sourceWarehouseId: warehouseNorth.id,
+      destinationCenterId: shelterNorth.id,
+      assignedVehicle: "Mountain 4WD Convoy (HP-01-M-5566)",
+      driverName: "Karan Johar",
+      driverPhone: "+91 98777 66554",
+      status: DeliveryStatus.Dispatched,
+      departureTime: new Date("2026-09-21T06:00:00Z"),
+      estimatedArrival: new Date("2026-09-22T14:00:00Z"),
+      trackingNotes: "High-altitude winterized vehicles departing Northern Depot.",
+      items: {
+        create: [
+          { resourceId: resBlankets.id, allocationId: alloc3.id, quantity: 400 },
+          { resourceId: resFirstAid.id, allocationId: alloc4.id, quantity: 30 },
+        ],
+      },
+    },
+  });
+
+  // Delivery 4: Pending (prepared at warehouse)
+  await prisma.delivery.create({
+    data: {
+      requestId: request1.id,
+      sourceWarehouseId: warehouseCentral.id,
+      destinationCenterId: campAlpha.id,
+      assignedVehicle: "Reserve Supply Truck (KL-07-CD-3322)",
+      driverName: "Anil Poduval",
+      driverPhone: "+91 94000 33445",
+      status: DeliveryStatus.Pending,
+      departureTime: null,
+      estimatedArrival: new Date("2026-09-23T18:00:00Z"),
+      trackingNotes: "Awaiting final loading and safety manifest inspection.",
     },
   });
 

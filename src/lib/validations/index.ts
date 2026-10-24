@@ -6,7 +6,7 @@ export const loginSchema = z.object({
 });
 
 export const disasterSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
   type: z.enum([
     "Flood",
     "Earthquake",
@@ -17,7 +17,7 @@ export const disasterSchema = z.object({
     "Industrial_Accident",
     "Other",
   ]),
-  description: z.string().min(10, "Description must be at least 10 characters"),
+  description: z.string().min(2, "Description must be at least 2 characters"),
   severity: z.enum(["Low", "Medium", "High", "Critical"]),
   status: z.enum(["Active", "Monitoring", "Resolved"]).default("Active"),
   affectedArea: z.string().min(2, "Affected area is required"),

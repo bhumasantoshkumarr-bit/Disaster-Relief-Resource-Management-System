@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { deliverySchema } from "@/lib/validations";
 import { logAuditAction } from "@/lib/audit";
-import { DeliveryStatus, RequestStatus, NotificationType } from "@prisma/client";
+import { DeliveryStatus, RequestStatus, NotificationType, Role } from "@prisma/client";
 
 export async function GET(req: Request) {
   try {
@@ -46,6 +46,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (
+      session.role !== Role.ADMIN &&
+      session.role !== Role.DISASTER_OFFICER &&
+      session.role !== Role.RESOURCE_MANAGER
+    ) {
+      return NextResponse.json({ error: "Forbidden: Officer or Manager role required to dispatch" }, { status: 403 });
+    }
+
     const body = await req.json();
     const validated = deliverySchema.safeParse(body);
 
@@ -57,6 +65,11 @@ export async function POST(req: Request) {
     }
 
     const data = validated.data;
+
+    // Fetch allocations for this request to populate manifest
+    const allocations = await prisma.resourceAllocation.findMany({
+      where: { requestId: data.requestId },
+    });
 
     const delivery = await prisma.delivery.create({
       data: {
@@ -70,10 +83,18 @@ export async function POST(req: Request) {
         departureTime: new Date(),
         estimatedArrival: data.estimatedArrival ? new Date(data.estimatedArrival) : null,
         trackingNotes: data.trackingNotes || "Shipment dispatched from warehouse.",
+        items: allocations.length > 0 ? {
+          create: allocations.map((alloc) => ({
+            resourceId: alloc.resourceId,
+            allocationId: alloc.id,
+            quantity: alloc.allocatedQuantity,
+          })),
+        } : undefined,
       },
       include: {
         sourceWarehouse: true,
         destinationCenter: true,
+        items: true,
       },
     });
 
@@ -115,10 +136,26 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Delivery ID and status required" }, { status: 400 });
     }
 
+    const existingDelivery = await prisma.delivery.findUnique({ where: { id } });
+    if (!existingDelivery) {
+      return NextResponse.json({ error: "Delivery not found" }, { status: 404 });
+    }
+
+    // Business Logic: Delivered shipments cannot be modified or re-dispatched
+    if (existingDelivery.status === DeliveryStatus.Delivered && status !== DeliveryStatus.Delivered) {
+      return NextResponse.json(
+        { error: "Business rule violation: Delivered shipments cannot be re-dispatched or status modified." },
+        { status: 400 }
+      );
+    }
+
     const updateData: Record<string, unknown> = {
       status: status as DeliveryStatus,
-      trackingNotes,
     };
+
+    if (trackingNotes !== undefined) {
+      updateData.trackingNotes = trackingNotes;
+    }
 
     if (estimatedArrival) {
       updateData.estimatedArrival = new Date(estimatedArrival);
@@ -126,6 +163,8 @@ export async function PUT(req: Request) {
 
     if (status === DeliveryStatus.Delivered) {
       updateData.actualArrival = new Date();
+    } else if (status === DeliveryStatus.Dispatched && !existingDelivery.departureTime) {
+      updateData.departureTime = new Date();
     }
 
     const delivery = await prisma.delivery.update({
@@ -158,7 +197,7 @@ export async function PUT(req: Request) {
         title: `DELIVERY STATUS: ${status}`,
         message: `Shipment for ${delivery.destinationCenter.name} status updated to ${status}.`,
         type: NotificationType.DELIVERY_UPDATE,
-        link: "/deliveries",
+        link: `/deliveries/${delivery.id}`,
       },
     });
 

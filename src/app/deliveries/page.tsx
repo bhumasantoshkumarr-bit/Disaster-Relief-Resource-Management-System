@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Truck, MapPin, ArrowRight, ShieldCheck, CheckCircle2, Clock } from "lucide-react";
+import Link from "next/link";
+import { Truck, MapPin, ArrowRight, ShieldCheck, CheckCircle2, Clock, Plus, ExternalLink } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { DeliveryStatus } from "@prisma/client";
 
@@ -99,16 +100,30 @@ export default function DeliveriesPage() {
                     <Truck className="w-4 h-4 text-indigo-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900">{delivery.assignedVehicle}</h3>
+                    <Link
+                      href={`/deliveries/${delivery.id}`}
+                      className="font-bold text-slate-900 hover:text-indigo-600 hover:underline flex items-center gap-1.5"
+                    >
+                      <span>{delivery.assignedVehicle}</span>
+                      <ExternalLink className="w-3 h-3 text-slate-400" />
+                    </Link>
                     <p className="text-[11px] text-slate-500">
                       Driver: <span className="text-slate-800 font-semibold">{delivery.driverName}</span> ({delivery.driverPhone})
                     </p>
                   </div>
                 </div>
 
-                <span className={`px-2.5 py-1 rounded text-xs font-bold ${statusBadge[delivery.status]}`}>
-                  {delivery.status.replace("_", " ")}
-                </span>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/deliveries/${delivery.id}`}
+                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg"
+                  >
+                    View Details
+                  </Link>
+                  <span className={`px-2.5 py-1 rounded text-xs font-bold ${statusBadge[delivery.status]}`}>
+                    {delivery.status.replace("_", " ")}
+                  </span>
+                </div>
               </div>
 
               {/* Route Card */}
@@ -137,23 +152,34 @@ export default function DeliveriesPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {delivery.status !== "Delivered" && (
-                    <>
-                      {delivery.status !== "In_Transit" && (
-                        <button
-                          onClick={() => handleUpdateStatus(delivery.id, "In_Transit")}
-                          className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-semibold hover:bg-indigo-100"
-                        >
-                          Mark In Transit
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleUpdateStatus(delivery.id, "Delivered")}
-                        className="px-3.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold"
-                      >
-                        Confirm Delivered
-                      </button>
-                    </>
+                  {delivery.status === "Pending" && (
+                    <button
+                      onClick={() => handleUpdateStatus(delivery.id, "Dispatched")}
+                      className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-semibold hover:bg-indigo-100"
+                    >
+                      Mark Dispatched
+                    </button>
+                  )}
+                  {delivery.status === "Dispatched" && (
+                    <button
+                      onClick={() => handleUpdateStatus(delivery.id, "In_Transit")}
+                      className="px-3 py-1 bg-sky-50 text-sky-700 border border-sky-200 rounded-lg font-semibold hover:bg-sky-100"
+                    >
+                      Mark In Transit
+                    </button>
+                  )}
+                  {delivery.status === "In_Transit" && (
+                    <button
+                      onClick={() => handleUpdateStatus(delivery.id, "Delivered")}
+                      className="px-3.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold"
+                    >
+                      Confirm Delivered
+                    </button>
+                  )}
+                  {delivery.status === "Delivered" && (
+                    <span className="text-emerald-700 font-bold flex items-center gap-1 text-[11px]">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Delivered
+                    </span>
                   )}
                 </div>
               </div>

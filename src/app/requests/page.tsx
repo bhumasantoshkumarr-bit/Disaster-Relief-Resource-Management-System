@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileCheck, Plus, CheckCircle2, Clock, AlertTriangle, Boxes, Search, ChevronRight, X } from "lucide-react";
+import Link from "next/link";
+import { FileCheck, Plus, CheckCircle2, Clock, AlertTriangle, Boxes, Search, ChevronRight, X, ArrowRight } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { RequestPriority, RequestStatus, ResourceCategory } from "@prisma/client";
 
@@ -318,7 +319,12 @@ export default function RequestsPage() {
               <div key={req.id} className="saas-card p-5 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900">REQ-{req.id.slice(0, 8)}</span>
+                    <Link
+                      href={`/requests/${req.id}`}
+                      className="font-bold text-slate-900 hover:text-indigo-600 hover:underline flex items-center gap-1"
+                    >
+                      <span>REQ-{req.id.slice(0, 8)}</span>
+                    </Link>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${priorityBadge[req.priority]}`}>
                       {req.priority}
                     </span>
@@ -371,7 +377,7 @@ export default function RequestsPage() {
                     <h4 className="font-bold text-slate-900">{req.destinationCenter.name}</h4>
                     <p className="text-indigo-600 font-medium">Incident: {req.disaster.name}</p>
                     <p className="text-slate-600 mt-1 bg-white p-2.5 rounded border border-slate-200 italic">
-                      "{req.justification}"
+                      &ldquo;{req.justification}&rdquo;
                     </p>
                   </div>
 
@@ -389,12 +395,13 @@ export default function RequestsPage() {
                 </div>
 
                 <div className="border-t border-slate-100 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <button
-                    onClick={() => setSelectedRequest(req)}
-                    className="text-indigo-600 font-semibold hover:underline"
+                  <Link
+                    href={`/requests/${req.id}`}
+                    className="text-indigo-600 font-semibold hover:underline flex items-center gap-1"
                   >
-                    View Details →
-                  </button>
+                    <span>View Requisition Details</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
 
                   <div className="flex items-center gap-2">
                     {req.status === "Pending" && (

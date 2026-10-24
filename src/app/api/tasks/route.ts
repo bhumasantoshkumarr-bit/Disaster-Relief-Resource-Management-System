@@ -33,8 +33,9 @@ export async function POST(req: Request) {
     const validated = taskSchema.safeParse(body);
 
     if (!validated.success) {
+      const errorMsg = validated.error.errors.map((e) => e.message).join(", ");
       return NextResponse.json(
-        { error: "Validation error", details: validated.error.flatten().fieldErrors },
+        { error: errorMsg || "Validation error", details: validated.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
@@ -110,6 +111,15 @@ export async function PUT(req: Request) {
       entityId: task.id,
       performedById: session.id,
       details: `Updated task '${task.title}' status to ${task.status}`,
+    });
+
+    await prisma.notification.create({
+      data: {
+        title: `TASK UPDATE: ${task.title}`,
+        message: `Field task '${task.title}' has been updated to status ${task.status.replace("_", " ")}.`,
+        type: NotificationType.TASK_ASSIGNED,
+        link: "/tasks",
+      },
     });
 
     return NextResponse.json({ task });

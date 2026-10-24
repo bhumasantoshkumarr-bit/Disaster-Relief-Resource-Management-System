@@ -43,11 +43,36 @@ export async function POST(req: Request) {
       // 2. Fetch request
       const reqRecord = await tx.resourceRequest.findUnique({
         where: { id: requestId },
-        include: { items: true, destinationCenter: true },
+        include: { items: true, destinationCenter: true, disaster: true },
       });
 
       if (!reqRecord) {
         throw new Error("Resource request not found");
+      }
+
+      // Business Rule: Closed/Resolved disasters or fulfilled/cancelled requests cannot be modified
+      if (reqRecord.disaster.status === "Resolved") {
+        throw new Error("Cannot allocate resources to a resolved disaster incident.");
+      }
+
+      if (reqRecord.status === RequestStatus.Fulfilled) {
+        throw new Error("Cannot allocate resources to an already fulfilled requisition.");
+      }
+
+      if (reqRecord.status === RequestStatus.Cancelled || reqRecord.status === RequestStatus.Rejected) {
+        throw new Error(`Cannot allocate resources to a ${reqRecord.status.toLowerCase()} requisition.`);
+      }
+
+      // Check item and prevent over-allocation
+      const targetItem = reqRecord.items.find(
+        (it) => it.resourceId === resourceId || it.category === resource.category
+      );
+
+      if (targetItem) {
+        const remainingNeeded = targetItem.requestedQuantity - targetItem.fulfilledQuantity;
+        if (remainingNeeded <= 0) {
+          throw new Error(`Item ${targetItem.category.replace("_", " ")} has already been completely fulfilled.`);
+        }
       }
 
       // 3. Deduct inventory safely
@@ -67,6 +92,17 @@ export async function POST(req: Request) {
         },
       });
 
+      if (newStatus === ResourceStatus.Low_Stock || newStatus === ResourceStatus.Out_of_Stock) {
+        await tx.notification.create({
+          data: {
+            title: `LOW STOCK ALERT: ${resource.name}`,
+            message: `Inventory for '${resource.name}' at ${resource.warehouse.name} dropped to ${updatedQuantity} ${resource.unit}.`,
+            type: NotificationType.LOW_INVENTORY,
+            link: "/resources",
+          },
+        });
+      }
+
       // 4. Create Allocation record
       const allocation = await tx.resourceAllocation.create({
         data: {
@@ -80,27 +116,34 @@ export async function POST(req: Request) {
       });
 
       // 5. Update RequestItem fulfilled quantity
-      const targetItem = reqRecord.items.find(
-        (it) => it.resourceId === resourceId || it.category === resource.category
-      );
-
+      let targetFulfilled = 0;
       if (targetItem) {
-        const newFulfilled = targetItem.fulfilledQuantity + allocatedQuantity;
+        targetFulfilled = targetItem.fulfilledQuantity + allocatedQuantity;
         await tx.requestItem.update({
           where: { id: targetItem.id },
           data: {
             resourceId,
-            fulfilledQuantity: newFulfilled,
+            fulfilledQuantity: targetFulfilled,
           },
         });
       }
 
-      // 6. Update Request status to Partially_Fulfilled or Approved
+      // 6. Check if all items in the request are now fulfilled
+      const allItemsFulfilled = reqRecord.items.every((it) => {
+        const fulfilled = it.id === targetItem?.id ? targetFulfilled : it.fulfilledQuantity;
+        return fulfilled >= it.requestedQuantity;
+      });
+
+      const nextStatus = allItemsFulfilled
+        ? RequestStatus.Fulfilled
+        : RequestStatus.Partially_Fulfilled;
+
       await tx.resourceRequest.update({
         where: { id: requestId },
         data: {
-          status: RequestStatus.Approved,
+          status: nextStatus,
           approvedDate: reqRecord.approvedDate || new Date(),
+          fulfilledDate: allItemsFulfilled ? new Date() : undefined,
         },
       });
 

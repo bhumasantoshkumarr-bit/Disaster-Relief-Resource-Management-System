@@ -41,7 +41,8 @@ export async function POST(req: Request) {
     const validated = resourceSchema.safeParse(body);
 
     if (!validated.success) {
-      return NextResponse.json({ error: "Validation error", details: validated.error.flatten().fieldErrors }, { status: 400 });
+      const errorMsg = validated.error.errors.map((e) => e.message).join(", ");
+      return NextResponse.json({ error: errorMsg || "Validation error", details: validated.error.flatten().fieldErrors }, { status: 400 });
     }
 
     const data = validated.data;
@@ -148,6 +149,17 @@ export async function PUT(req: Request) {
       performedById: session.id,
       details: `Updated stock level of '${resource.name}' to ${newQty} ${resource.unit}.`,
     });
+
+    if (computedStatus === ResourceStatus.Low_Stock || computedStatus === ResourceStatus.Out_of_Stock) {
+      await prisma.notification.create({
+        data: {
+          title: `LOW STOCK WARNING: ${resource.name}`,
+          message: `Resource '${resource.name}' at ${existing.warehouse.name} is now ${computedStatus.replace("_", " ")} (${resource.quantity} ${resource.unit} remaining).`,
+          type: NotificationType.LOW_INVENTORY,
+          link: "/resources",
+        },
+      });
+    }
 
     return NextResponse.json({ resource });
   } catch (error) {

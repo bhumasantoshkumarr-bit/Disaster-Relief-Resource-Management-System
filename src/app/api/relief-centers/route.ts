@@ -37,7 +37,8 @@ export async function POST(req: Request) {
     const validated = reliefCenterSchema.safeParse(body);
 
     if (!validated.success) {
-      return NextResponse.json({ error: "Validation error", details: validated.error.flatten().fieldErrors }, { status: 400 });
+      const errorMsg = validated.error.errors.map((e) => e.message).join(", ");
+      return NextResponse.json({ error: errorMsg || "Validation error", details: validated.error.flatten().fieldErrors }, { status: 400 });
     }
 
     const center = await prisma.reliefCenter.create({

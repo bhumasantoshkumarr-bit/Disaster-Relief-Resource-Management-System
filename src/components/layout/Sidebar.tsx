@@ -18,7 +18,6 @@ import {
   ShieldCheck,
   ShieldAlert,
   Settings,
-  Shield,
   X,
 } from "lucide-react";
 import { Role } from "@prisma/client";
@@ -36,9 +35,9 @@ export default function Sidebar({ userRole = Role.ADMIN, isOpenMobile = false, o
     { name: "Overview", href: "/dashboard", icon: LayoutDashboard, roles: Object.values(Role) },
     { name: "Disasters", href: "/disasters", icon: Flame, roles: [Role.ADMIN, Role.DISASTER_OFFICER, Role.VOLUNTEER] },
     { name: "Resource Requests", href: "/requests", icon: FileCheck, roles: [Role.ADMIN, Role.DISASTER_OFFICER, Role.RESOURCE_MANAGER, Role.RELIEF_CAMP_MANAGER] },
-    { name: "Resources", href: "/inventory", icon: Boxes, roles: [Role.ADMIN, Role.RESOURCE_MANAGER, Role.DISASTER_OFFICER] },
+    { name: "Resources", href: "/resources", icon: Boxes, roles: [Role.ADMIN, Role.RESOURCE_MANAGER, Role.DISASTER_OFFICER] },
     { name: "Warehouses", href: "/warehouses", icon: Warehouse, roles: [Role.ADMIN, Role.RESOURCE_MANAGER, Role.DISASTER_OFFICER] },
-    { name: "Relief Centers", href: "/camps", icon: Home, roles: [Role.ADMIN, Role.DISASTER_OFFICER, Role.RELIEF_CAMP_MANAGER] },
+    { name: "Relief Centers", href: "/relief-centers", icon: Home, roles: [Role.ADMIN, Role.DISASTER_OFFICER, Role.RELIEF_CAMP_MANAGER] },
     { name: "Deliveries", href: "/deliveries", icon: Truck, roles: [Role.ADMIN, Role.RESOURCE_MANAGER, Role.RELIEF_CAMP_MANAGER, Role.DISASTER_OFFICER] },
     { name: "Volunteers", href: "/volunteers", icon: Users, roles: [Role.ADMIN, Role.DISASTER_OFFICER, Role.VOLUNTEER] },
     { name: "Tasks", href: "/tasks", icon: CheckSquare, roles: [Role.ADMIN, Role.DISASTER_OFFICER, Role.VOLUNTEER] },
@@ -91,7 +90,11 @@ export default function Sidebar({ userRole = Role.ADMIN, isOpenMobile = false, o
           </p>
           {filteredPrimary.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+            const isActive =
+              pathname === item.href ||
+              (item.href !== "/dashboard" && pathname.startsWith(item.href)) ||
+              (item.href === "/resources" && pathname.startsWith("/inventory")) ||
+              (item.href === "/relief-centers" && pathname.startsWith("/camps"));
 
             return (
               <Link
